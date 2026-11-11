@@ -16,7 +16,8 @@ html,body{height:100%;background:var(--bg);color:var(--tx);font-family:"Avenir N
 #scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,229,255,.035) 0 1px,transparent 1px 3px)}
 #scan::after{content:"";position:absolute;left:0;right:0;height:90px;background:linear-gradient(transparent,rgba(0,229,255,.12),transparent);animation:sweep 5s linear infinite}
 @keyframes sweep{from{top:-90px}to{top:100%}}
-.reticle{position:absolute;left:50%;top:44%;width:min(70vw,340px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:.55;pointer-events:none}
+.reticle{position:absolute;left:30%;top:44%;width:min(70vw,340px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:0;pointer-events:none;transition:opacity .9s ease,left 1.8s ease-in-out,top 1.8s ease-in-out}.reticle.show{opacity:.6}
+#err{position:absolute;left:16px;right:16px;top:calc(env(safe-area-inset-top,0px) + 74px);z-index:6;text-align:center;font-size:13px;line-height:1.4;color:#ffb347;background:rgba(0,0,0,.7);border:1px solid #ffb347;border-radius:12px;padding:10px 12px;display:none}
 .reticle svg{position:absolute;inset:0;width:100%;height:100%}
 .r1{animation:spin 18s linear infinite}.r2{animation:spin 11s linear infinite reverse}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -93,6 +94,7 @@ html,body{height:100%;background:var(--bg);color:var(--tx);font-family:"Avenir N
 <div class="card run"><span>🏃 <span id="km">5,2</span> km</span><span>⏱ <span id="tm">24:18</span></span></div>
 </section>
 
+<div id="err"></div>
 <div class="tag">IRIS AI · VISION 2.0 · PROTOTYP-SIMULATION</div>
 <div class="tabs" id="tabs"><button data-m="nav">Navigation</button><button data-m="tr">Übersetzen</button><button data-m="h">Health</button><button id="flip">⟲ Kamera</button><button id="auto">⏵ Auto</button></div>
 
@@ -143,15 +145,31 @@ function boot(){var bi=$('#bi'),t=0,msgs=['SENSOREN KALIBRIEREN …','KI-MODELL 
  var iv=setInterval(function(){t+=2;bi.style.width=t+'%';$('#bt').textContent=msgs[Math.min(2,Math.floor(t/34))];if(t>=100){clearInterval(iv);setTimeout(function(){$('#boot').classList.add('off');show('nav');sched()},500)}},45)}
 var face='environment',stream=null;
 function note(t){$('.tag').textContent=t}
-function startCam(f){face=f;if(stream)stream.getTracks().forEach(function(t){t.stop()});
- navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:f}},audio:false}).catch(function(){return navigator.mediaDevices.getUserMedia({video:true,audio:false})}).then(function(s){stream=s;var v=$('#bg');v.srcObject=s;v.style.display='block';$('#fake').style.display='none';v.play();note('IRIS AI · LIVE-KAMERA AKTIV')}).catch(function(){note('KAMERA GESPERRT – SEITE DIREKT IN SAFARI ÖFFNEN')})}
+function showErr(t){var e=$('#err');e.textContent=t;e.style.display=t?'block':'none'}
+function startCam(f){face=f;showErr('');
+ if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){showErr('Kamera nicht verfügbar. Seite über https (GitHub Pages) direkt in Safari öffnen.');return}
+ if(stream)stream.getTracks().forEach(function(t){t.stop()});
+ var v=$('#bg');
+ navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:f},width:{ideal:1920},height:{ideal:1080}},audio:false})
+ .catch(function(e){if(e&&e.name==='NotAllowedError')throw e;return navigator.mediaDevices.getUserMedia({video:true,audio:false})})
+ .then(function(s){stream=s;v.setAttribute('playsinline','');v.muted=true;v.srcObject=s;v.style.display='block';$('#fake').style.display='none';return v.play()})
+ .then(function(){note('IRIS AI · LIVE-KAMERA AKTIV')})
+ .catch(function(e){var n=e&&e.name;showErr(n==='NotAllowedError'?'Kamera-Zugriff verweigert. iPhone: Einstellungen → Apps → Safari → Kamera → „Fragen“ oder „Erlauben“. Danach ⟲ unten tippen.':'Kamera konnte nicht gestartet werden ('+(n||'Fehler')+'). Seite direkt in Safari öffnen und ⟲ tippen.')})}
 function begin(useCam){$('#cam').style.display=$('#nocam').style.display='none';
  if(useCam&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
   startCam('environment');}else if(useCam){note('KAMERA NICHT VERFÜGBAR – SAFARI NUTZEN')}
- boot()}
+ boot();if(!useCam)setTimeout(function(){showErr('Ohne Kamera gestartet. Tippe unten auf ⟲, um die Kamera zu aktivieren.');setTimeout(function(){showErr('')},5000)},3500)}
 $('#cam').onclick=function(){begin(true)};$('#nocam').onclick=function(){begin(false)};
 $('#auto').textContent='⏸ Auto';
-$('#flip').onclick=function(){if(stream)startCam(face==='environment'?'user':'environment')};
+$('#flip').onclick=function(){startCam(stream?(face==='environment'?'user':'environment'):face)};
+var ret=document.querySelector('.reticle');
+function reticleCycle(){var xs=[28,72],i=0,n=0;
+ ret.style.top=(36+Math.random()*14)+'%';ret.style.left=xs[0]+'%';
+ setTimeout(function(){ret.classList.add('show')},100);
+ var mv=setInterval(function(){i=1-i;ret.style.left=xs[i]+'%';if(++n>=3)clearInterval(mv)},2000);
+ setTimeout(function(){ret.classList.remove('show')},6600);
+ setTimeout(reticleCycle,9600+Math.random()*5000)}
+setTimeout(reticleCycle,4500);
 </script>
 </body>
 </html>
