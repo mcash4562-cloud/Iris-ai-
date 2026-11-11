@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>IRIS HUD</title>
+<style>
+:root{--c:#4de8ff;--o:#ffb347;--bg:#02070c;--tx:#d9f8ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root{--bg:#02070c}}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:ui-monospace,"SF Mono",Menlo,monospace;overflow:hidden;text-shadow:0 0 6px rgba(77,232,255,.55)}
+#bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+#fake{position:absolute;inset:0;background:radial-gradient(circle at 25% 35%,rgba(255,150,90,.35),transparent 40%),radial-gradient(circle at 75% 25%,rgba(80,130,255,.4),transparent 45%),linear-gradient(#1a2a40,#070d16)}
+#visor{position:absolute;inset:-5% -16%;border-radius:50%/40%;box-shadow:0 0 0 120vmax #000,inset 0 0 90px 12px rgba(77,232,255,.3);pointer-events:none;transition:box-shadow .6s}
+body.nv #visor{box-shadow:0 0 0 120vmax transparent,inset 0 0 0 0 transparent}
+#shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(0,20,30,.35),transparent 25%,transparent 55%,rgba(0,20,30,.5)),repeating-linear-gradient(0deg,rgba(77,232,255,.04) 0 1px,transparent 1px 3px)}
+.top{position:absolute;top:calc(env(safe-area-inset-top,0px) + 12px);left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;letter-spacing:.08em}
+.top b{display:block;font-size:20px;font-weight:300}
+.comp{position:relative;width:46%;height:34px;overflow:hidden;-webkit-mask:linear-gradient(90deg,transparent,#000 25%,#000 75%,transparent);mask:linear-gradient(90deg,transparent,#000 25%,#000 75%,transparent)}
+.comp::after{content:"▼";position:absolute;left:50%;top:-3px;transform:translateX(-50%);font-size:9px;color:var(--o);text-shadow:none}
+#strip{position:absolute;left:50%;top:14px;display:flex;white-space:nowrap}
+#strip span{width:14px;flex:none;text-align:center;font-size:10px;position:relative}
+#strip span i{position:absolute;left:50%;top:-11px;transform:translateX(-50%);font-style:normal;font-size:10px}
+.hd{position:absolute;top:calc(env(safe-area-inset-top,0px) + 48px);left:50%;transform:translateX(-50%);font-size:11px;color:var(--o);text-shadow:none}
+#jv{position:absolute;top:calc(env(safe-area-inset-top,0px) + 68px);left:16px;right:16px;text-align:center;font-size:12px;min-height:16px;letter-spacing:.04em}
+#jv::before{content:"IRIS ▸ ";color:var(--o);text-shadow:none}
+.lad{position:absolute;top:34%;height:24%;width:44px;font-size:10px}
+.lad.l{left:8px}.lad.r{right:8px;text-align:right}
+.lad::before{content:"";position:absolute;top:18px;bottom:0;width:8px;background:repeating-linear-gradient(transparent 0 7px,rgba(77,232,255,.7) 7px 8px);animation:sc 3s linear infinite}
+.lad.l::before{right:6px;border-right:1px solid var(--c)}.lad.r::before{left:6px;border-left:1px solid var(--c)}
+@keyframes sc{to{background-position:0 16px}}
+.ret{position:absolute;left:50%;top:44%;width:190px;height:190px;transform:translate(-50%,-50%);opacity:.65;pointer-events:none}
+.ret svg{position:absolute;inset:0}.a1{animation:sp 16s linear infinite}.a2{animation:sp 9s linear infinite reverse}
+@keyframes sp{to{transform:rotate(360deg)}}
+.mode{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .5s}
+.mode.on{opacity:1}
+.hud{position:absolute;background:rgba(0,45,65,.32);border:1px solid rgba(77,232,255,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);box-shadow:0 0 14px rgba(77,232,255,.25),inset 0 0 16px rgba(77,232,255,.1);clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px);padding:12px 16px}
+.lb{font-size:10px;letter-spacing:.22em;color:var(--c);opacity:.85;margin-bottom:4px}
+.big{font-size:32px;font-weight:300;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.lock{position:absolute;border:1px solid var(--o);box-shadow:0 0 12px rgba(255,179,71,.5);color:var(--o);text-shadow:none;font-size:10px;letter-spacing:.1em;animation:lk 2.4s ease-in-out infinite}
+.lock::before,.lock::after{content:"";position:absolute;width:10px;height:10px;border:2px solid var(--o)}
+.lock::before{left:-4px;top:-4px;border-right:0;border-bottom:0}.lock::after{right:-4px;bottom:-4px;border-left:0;border-top:0}
+.lock span{position:absolute;left:-1px;top:-18px;white-space:nowrap}
+@keyframes lk{50%{box-shadow:0 0 22px rgba(255,179,71,.9)}}
+.path{position:absolute;left:50%;bottom:215px;width:150px;height:160px;transform:translateX(-50%);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px}
+.path i{border-left:var(--w) solid transparent;border-right:var(--w) solid transparent;border-bottom:calc(var(--w)*.6) solid var(--c);filter:drop-shadow(0 0 8px var(--c));opacity:.15;animation:fl 1.4s infinite}
+@keyframes fl{50%{opacity:1}}
+.en{font-size:14px;opacity:.7;min-height:20px}.de{font-size:24px;min-height:62px;margin-top:4px;line-height:1.25;color:#fff}
+.wave{display:flex;gap:3px;align-items:center;height:16px;margin-bottom:6px}.wave i{width:3px;background:var(--c);animation:w .9s infinite ease-in-out}
+@keyframes w{0%,100%{height:3px}50%{height:15px}}
+.hr3{display:grid;grid-template-columns:96px 1fr 90px;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(77,232,255,.2)}
+.hr3:last-child{border:0}.hr3 .v{font-size:26px;font-weight:300}.hr3 small{font-size:11px;opacity:.7}
+.hr3 svg{width:100%;height:30px}.hr3 polyline{fill:none;stroke:var(--c);stroke-width:1.8;filter:drop-shadow(0 0 4px var(--c))}
+.dock{position:absolute;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:6px;z-index:4}
+.dock button{flex:1;padding:12px 2px;border:1px solid rgba(77,232,255,.4);background:rgba(0,40,60,.45);color:var(--tx);font:inherit;font-size:11px;letter-spacing:.1em;text-transform:uppercase;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+.dock button.on{background:var(--c);color:#00222c;text-shadow:none}
+.dock .rb{flex:0 0 40px;font-size:15px;padding:10px 0}
+#boot{position:absolute;inset:0;z-index:5;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .9s}
+#boot.off{opacity:0;pointer-events:none}
+#boot svg{width:130px;height:130px}
+#boot h1{font-weight:200;font-size:30px;letter-spacing:.6em;margin-left:.6em}
+#log{font-size:11px;line-height:1.9;min-height:96px;letter-spacing:.06em;color:var(--c)}
+.cta{padding:13px 28px;border:1px solid var(--c);background:rgba(77,232,255,.1);color:var(--c);font:inherit;font-size:12px;letter-spacing:.2em;clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+.cta2{background:none;border:0;color:#789;font:inherit;font-size:11px;letter-spacing:.15em;padding:6px}
+</style>
+</head>
+<body>
+<video id="bg" autoplay playsinline muted></video>
+<div id="fake"></div><div id="visor"></div><div id="shade"></div>
+
+<div class="ret"><svg class="a1" viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" fill="none" stroke="#4de8ff" stroke-width=".5" stroke-dasharray="1.5 2.5"/><path d="M50 1v7M50 92v7M1 50h7M92 50h7" stroke="#4de8ff" stroke-width=".8"/></svg>
+<svg class="a2" viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="none" stroke="#4de8ff" stroke-width="1.2" stroke-dasharray="34 10 6 10"/></svg>
+<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="24" fill="none" stroke="#ffb347" stroke-width=".6" stroke-dasharray="60 90"/><path d="M42 50h5M53 50h5M50 42v5M50 53v5" stroke="#4de8ff" stroke-width=".8"/></svg></div>
+
+<div class="top"><div>☀ 18 °C<b id="clock">17:24</b></div><div class="comp"><div id="strip"></div></div><div style="text-align:right">IRIS<b style="font-size:12px;color:#7dff9a;text-shadow:none">● ONLINE</b></div></div>
+<div class="hd" id="hd">000°</div>
+<div id="jv"></div>
+<div class="lad l">KI<br><span id="ai">98</span>%</div><div class="lad r">AKKU<br>92%</div>
+
+<section class="mode" id="m-nav">
+<div class="hud" style="top:calc(env(safe-area-inset-top,0px) + 100px);left:20px;display:flex;gap:14px;align-items:center"><div style="font-size:40px;color:var(--c)">↑</div><div><div class="lb">NAVIGATION</div><div class="big"><span id="dist">300</span> M</div><div style="font-size:12px">HAUPTBAHNHOF</div></div></div>
+<div class="lock" style="right:12%;top:36%;width:84px;height:62px"><span>ZIEL · 300 M</span></div>
+<div class="path" id="path"></div>
+<div class="hud" style="left:20px;bottom:128px"><div class="lb">KALENDER</div><div style="font-size:14px">Meeting in 36 Min</div><div style="font-size:11px;opacity:.7">Büro, 2. OG</div></div>
+<div class="hud" style="right:20px;bottom:128px;text-align:center"><div class="lb">TEMPO</div><div class="big" style="font-size:28px"><span id="spd">32</span></div><div style="font-size:10px">KM/H</div></div>
+</section>
+
+<section class="mode" id="m-tr">
+<div class="lock" style="left:14%;top:30%;width:60%;height:44px"><span>TEXT ERKANNT · EN → DE</span><div style="padding:6px 8px;font-size:13px;color:#fff;text-shadow:none">Open 24 h → Geöffnet rund um die Uhr</div></div>
+<div class="hud" style="left:20px;right:20px;bottom:128px"><div class="lb">ECHTZEIT-ÜBERSETZUNG · EN → DE</div><div class="wave" id="wave"></div><div class="en" id="en"></div><div class="de" id="de"></div></div>
+</section>
+
+<section class="mode" id="m-h">
+<div class="hud" style="left:20px;right:20px;top:calc(env(safe-area-inset-top,0px) + 100px)">
+<div class="lb">VITALWERTE · LIVE</div>
+<div class="hr3"><div class="lb" style="margin:0">PULS</div><div class="v"><span id="hr">72</span> <small>bpm</small></div><svg viewBox="0 0 100 30"><polyline id="l1"/></svg></div>
+<div class="hr3"><div class="lb" style="margin:0">SAUERSTOFF</div><div class="v"><span id="ox">98</span> <small>%</small></div><svg viewBox="0 0 100 30"><polyline id="l2"/></svg></div>
+<div class="hr3"><div class="lb" style="margin:0">TEMPERATUR</div><div class="v"><span id="tp">36,6</span> <small>°C</small></div><svg viewBox="0 0 100 30"><polyline id="l3"/></svg></div>
+</div>
+<div class="hud" style="left:20px;right:20px;bottom:128px;display:flex;justify-content:space-between"><div><div class="lb">STRECKE</div><span class="big" style="font-size:22px" id="km">5,2</span> KM</div><div><div class="lb">ZEIT</div><span class="big" style="font-size:22px" id="tm">24:18</span></div><div><div class="lb">STATUS</div><span style="color:#7dff9a;text-shadow:none">OPTIMAL</span></div></div>
+</section>
+
+<div class="dock" id="tabs"><button data-m="nav">Navi</button><button data-m="tr">Übersetzer</button><button data-m="h">Health</button><button class="rb" id="vz">◐</button><button class="rb" id="flip">⟲</button><button class="rb" id="auto">⏸</button></div>
+
+<div id="boot">
+<svg viewBox="0 0 100 100" class="a1"><circle cx="50" cy="50" r="46" fill="none" stroke="#4de8ff" stroke-width=".8" stroke-dasharray="30 6 4 6"/><circle cx="50" cy="50" r="34" fill="none" stroke="#ffb347" stroke-width=".6" stroke-dasharray="2 4"/></svg>
+<h1>IRIS</h1><div id="log"></div>
+<button class="cta" id="cam">MIT KAMERA STARTEN</button><button class="cta2" id="nocam">OHNE KAMERA</button>
+</div>
+
+<script>
+var $=function(s){return document.querySelector(s)};
+var modes=['nav','tr','h'],cur='nav',auto=true,timer=null,face='environment',stream=null;
+var path=$('#path');for(var i=0;i<5;i++){var e=document.createElement('i');e.style.setProperty('--w',(60-i*10)+'px');e.style.animationDelay=(i*.18)+'s';path.appendChild(e)}
+var wv=$('#wave');for(var j=0;j<28;j++){var b=document.createElement('i');b.style.animationDelay=(Math.random()*.9)+'s';wv.appendChild(b)}
+// compass
+var st=$('#strip'),h='';for(var d=-180;d<=540;d+=5){var m=((d%360)+360)%360,t=m%90===0?['N','O','S','W'][m/90]:(m%15===0?m:'');h+='<span>'+(t!==''?'<i>'+t+'</i>':'')+(m%15===0?'|':'·')+'</span>'}
+st.innerHTML=h;var hd=40;
+setInterval(function(){hd=(hd+0.35+Math.sin(Date.now()/2500)*.3+360)%360;st.style.transform='translateX('+(-(hd+180)/5*14-7)+'px)';$('#hd').textContent=String(Math.round(hd)).padStart(3,'0')+'°'},60);
+// jarvis text
+var jt=null;function say(t){var i=0;clearInterval(jt);$('#jv').textContent='';jt=setInterval(function(){$('#jv').textContent=t.slice(0,++i);if(i>=t.length)clearInterval(jt)},28)}
+var says={nav:'Route berechnet. Hauptbahnhof in 4 Minuten erreichbar.',tr:'Fremdsprache erkannt: Englisch. Übersetze in Echtzeit.',h:'Vitalwerte im Normalbereich. Gute Leistung.'};
+function show(m){cur=m;modes.forEach(function(x){$('#m-'+x).classList.toggle('on',x===m)});
+ document.querySelectorAll('#tabs [data-m]').forEach(function(b){b.classList.toggle('on',b.dataset.m===m)});
+ if(navigator.vibrate)navigator.vibrate(12);say(says[m]);if(m==='tr')startTrans()}
+function next(){show(modes[(modes.indexOf(cur)+1)%3])}
+function sched(){clearInterval(timer);if(auto)timer=setInterval(next,14000)}
+document.querySelectorAll('#tabs [data-m]').forEach(function(b){b.onclick=function(){auto=false;$('#auto').textContent='⏵';sched();show(b.dataset.m)}});
+$('#auto').onclick=function(){auto=!auto;this.textContent=auto?'⏸':'⏵';sched();if(auto)next()};
+$('#vz').onclick=function(){document.body.classList.toggle('nv')};
+function clk(){$('#clock').textContent=new Date().toTimeString().slice(0,5)}clk();setInterval(clk,1000);
+var dist=300;setInterval(function(){dist-=3;if(dist<20)dist=300;$('#dist').textContent=dist;$('#spd').textContent=30+Math.round(Math.random()*4);$('#ai').textContent=96+Math.round(Math.random()*3)},400);
+// translation
+var lines=[["Good morning! Did you sleep well?","Guten Morgen! Hast du gut geschlafen?"],["The meeting starts at ten.","Das Meeting beginnt um zehn Uhr."],["Shall we get a coffee first?","Wollen wir vorher einen Kaffee holen?"],["I’ll send you the report today.","Ich schicke dir heute den Bericht."]];
+var tt=null,li=0,tgen=0;
+function type(el,txt,cb){var i=0;el.textContent='';clearInterval(tt);tt=setInterval(function(){el.textContent=txt.slice(0,++i);if(i>=txt.length){clearInterval(tt);cb&&setTimeout(cb,350)}},32)}
+function startTrans(){var g=++tgen;li=0;(function step(){if(g!==tgen||cur!=='tr')return;var L=lines[li%lines.length];$('#de').textContent='';
+ type($('#en'),L[0],function(){if(g!==tgen)return;type($('#de'),L[1],function(){li++;setTimeout(step,1800)})})})()}
+// health
+var data=[[],[],[]];for(var k=0;k<30;k++){data[0].push(72);data[1].push(98);data[2].push(36.6)}
+function spark(id,a,mn,mx){$(id).setAttribute('points',a.map(function(v,i){return (i*100/29)+','+(27-(v-mn)/(mx-mn)*24)}).join(' '))}
+var sec=1458;
+setInterval(function(){var hr=72+Math.round(Math.sin(Date.now()/900)*5+Math.random()*3),ox=97+Math.round(Math.random()*2),tp=36.5+Math.random()*.2;
+ [hr,ox,tp].forEach(function(v,i){data[i].push(v);data[i].shift()});
+ $('#hr').textContent=hr;$('#ox').textContent=ox;$('#tp').textContent=tp.toFixed(1).replace('.',',');
+ spark('#l1',data[0],60,85);spark('#l2',data[1],95,100);spark('#l3',data[2],36.3,36.9);
+ sec++;$('#tm').textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');$('#km').textContent=(5.2+(sec-1458)*0.0028).toFixed(1).replace('.',',')},600);
+// camera
+function startCam(f){face=f;if(stream)stream.getTracks().forEach(function(t){t.stop()});
+ navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:f}},audio:false}).catch(function(){return navigator.mediaDevices.getUserMedia({video:true,audio:false})}).then(function(s){stream=s;var v=$('#bg');v.srcObject=s;v.style.display='block';$('#fake').style.display='none';v.play()}).catch(function(){say('Kamera gesperrt. Seite direkt in Safari öffnen.')})}
+$('#flip').onclick=function(){if(stream)startCam(face==='environment'?'user':'environment')};
+// boot
+function boot(){var L=['> OPTISCHE SENSOREN … OK','> KI-KERN … OK','> ÜBERSETZUNG DE/EN … OK','> HUD-PROJEKTION … OK','WILLKOMMEN ZURÜCK.'],n=0,lg=$('#log');
+ var iv=setInterval(function(){lg.innerHTML+=L[n++]+'<br>';if(n>=L.length){clearInterval(iv);setTimeout(function(){$('#boot').classList.add('off');show('nav');sched()},700)}},520)}
+function begin(c){$('#cam').style.display=$('#nocam').style.display='none';
+ if(c&&navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)startCam('environment');boot()}
+$('#cam').onclick=function(){begin(true)};$('#nocam').onclick=function(){begin(false)};
+</script>
+</body>
+</html>
